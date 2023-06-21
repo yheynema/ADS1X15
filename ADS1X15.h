@@ -10,7 +10,11 @@
 
 
 #include "Arduino.h"
-#include "Wire.h"
+#if defined(__AVR_ATtiny85__) || (__AVR_ATtiny2313__)
+#include <TinyWireM.h>      // include this if ATtiny85 or ATtiny2313
+#else 
+#include <Wire.h>           // original lib include
+#endif
 
 #define ADS1X15_LIB_VERSION               (F("0.3.10"))
 
@@ -38,8 +42,10 @@ public:
 
 #if defined (ESP8266) || defined(ESP32)
   bool     begin(int sda, int scl);
+#elif defined(__AVR_ATtiny85__) || (__AVR_ATtiny2313__)
+  bool     begin(int sda, int scl);
 #elif defined (ARDUINO_ARCH_RP2040) && !defined(__MBED__)
-  bool    begin(int sda, int scl);
+  bool     begin(int sda, int scl);
 #endif
 
   bool     begin();
@@ -167,7 +173,12 @@ protected:
   uint16_t _readRegister(uint8_t address, uint8_t reg);
   int8_t   _err = ADS1X15_OK;
 
-  TwoWire*  _wire;
+  #if defined(__AVR_ATtiny85__) || (__AVR_ATtiny2313__)
+	USI_TWI*  _wire;
+  #else
+    TwoWire*  _wire;
+  #endif
+	  
   uint32_t  _clockSpeed = 0;
 };
 
@@ -176,6 +187,24 @@ protected:
 //
 //  DERIVED CLASSES from ADS1X15
 //
+
+#if defined(__AVR_ATtiny85__) || (__AVR_ATtiny2313__)
+//Yh as of today, only supporting/targeting ADS115 (my test unit) ... will expand later
+class ADS1115 : public ADS1X15
+{
+public:
+  ADS1115(uint8_t address = ADS1115_ADDRESS, USI_TWI *wire = &USI_TWI);
+  int16_t  readADC_Differential_0_3();
+  int16_t  readADC_Differential_1_3();
+  int16_t  readADC_Differential_2_3();
+  int16_t  readADC_Differential_0_2();   //  not possible in async
+  int16_t  readADC_Differential_1_2();   //  not possible in async
+  void     requestADC_Differential_0_3();
+  void     requestADC_Differential_1_3();
+  void     requestADC_Differential_2_3();
+};
+
+#else
 class ADS1013 : public ADS1X15
 {
 public:
@@ -232,6 +261,7 @@ public:
   void     requestADC_Differential_1_3();
   void     requestADC_Differential_2_3();
 };
+#endif
 
 
 //  -- END OF FILE --

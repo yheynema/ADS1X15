@@ -149,7 +149,19 @@ bool ADS1X15::begin(int sda, int scl)
   if (! isConnected()) return false;
   return true;
 }
-
+#elif defined(__AVR_ATtiny85__) || (__AVR_ATtiny2313__)
+bool ADS1X15::begin(int sda, int scl)
+{
+  //Yh: cannot set, as it is hardcoded from USI_TWI_Master.h and as follow:
+  //#define PORT_USI_SDA        PORTB0
+  //#define PORT_USI_SCL        PORTB2
+  //_wire->setSDA(sda);
+  //_wire->setSCL(scl);
+  _wire->begin();
+  if ((_address < 0x48) || (_address > 0x4B)) return false;
+  if (! isConnected()) return false;
+  return true;
+}
 #elif defined (ARDUINO_ARCH_RP2040) && !defined(__MBED__)
 
 bool ADS1X15::begin(int sda, int scl)
@@ -370,7 +382,10 @@ int8_t ADS1X15::getError()
 void ADS1X15::setWireClock(uint32_t clockSpeed)
 {
   _clockSpeed = clockSpeed;
-  _wire->setClock(_clockSpeed);
+  //Yh: not supported for TinyWireM...
+  #if not defined(__AVR_ATmega328P__) || defined(__AVR_ATmega168__)
+    _wire->setClock(_clockSpeed);
+  #endif
 }
 
 
@@ -473,7 +488,73 @@ uint16_t ADS1X15::_readRegister(uint8_t address, uint8_t reg)
 //  DERIVED CLASSES
 //
 
+#if defined(__AVR_ATmega328P__) || defined(__AVR_ATmega168__)
 
+//Yh as of today, only supporting/targeting ADS115 (my test unit) ... will expand later
+///////////////////////////////////////////////////////////////////////////
+//
+//  ADS1115
+//
+ADS1115::ADS1115(uint8_t address, USI_TWI *wire)
+{
+  _address = address;
+  _wire = wire;
+  _config = ADS_CONF_COMP | ADS_CONF_GAIN | ADS_CONF_RES_16 | ADS_CONF_CHAN_4;
+  _conversionDelay = ADS1115_CONVERSION_DELAY;
+  _bitShift = 0;
+  _maxPorts = 4;
+}
+
+
+int16_t ADS1115::readADC_Differential_0_3()
+{
+  return _readADC(ADS1X15_MUX_DIFF_0_3);
+}
+
+
+int16_t ADS1115::readADC_Differential_1_3()
+{
+  return _readADC(ADS1X15_MUX_DIFF_1_3);
+}
+
+
+int16_t ADS1115::readADC_Differential_2_3()
+{
+  return _readADC(ADS1X15_MUX_DIFF_2_3);
+}
+
+
+int16_t ADS1115::readADC_Differential_0_2()
+{
+  return readADC(2) - readADC(0);
+}
+
+
+int16_t ADS1115::readADC_Differential_1_2()
+{
+  return readADC(2) - readADC(1);;
+}
+
+
+void ADS1115::requestADC_Differential_0_3()
+{
+  _requestADC(ADS1X15_MUX_DIFF_0_3);
+}
+
+
+void ADS1115::requestADC_Differential_1_3()
+{
+  _requestADC(ADS1X15_MUX_DIFF_1_3);
+}
+
+
+void ADS1115::requestADC_Differential_2_3()
+{
+  _requestADC(ADS1X15_MUX_DIFF_2_3);
+}
+
+
+#else
 ///////////////////////////////////////////////////////////////////////////
 //
 //  ADS1013
@@ -659,6 +740,7 @@ void ADS1115::requestADC_Differential_2_3()
   _requestADC(ADS1X15_MUX_DIFF_2_3);
 }
 
+#endif
 
 //  -- END OF FILE --
 
